@@ -7,6 +7,7 @@
 
 import 'dart:core' as $core;
 import 'dart:core' show int, bool, double, String, List, Map, override;
+import 'dart:typed_data';
 import 'dart:ui' as ui show Image, Path;
 import 'package:protobuf/protobuf.dart' as $pb;
 
@@ -1769,6 +1770,7 @@ class MovieEntity extends $pb.GeneratedMessage {
   SVGADynamicEntity dynamicItem = SVGADynamicEntity();
   Map<String, ui.Image> bitmapCache = {};
   Map<String, ui.Path> pathCache = {};
+  Map<String, Uint8List> audiosData = {};
 
   void dispose() {
     bitmapCache.values.forEach((element) {

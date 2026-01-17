@@ -9,6 +9,7 @@
 如果你想要了解更多细节，请访问[官方网站](https://svga.io/)。
 
 * SVGAPlayer-Flutter 只支持 2.0 版本格式.
+* 2.2.1支持音频svga
 
 ## 用法
 

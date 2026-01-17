@@ -1,11 +1,13 @@
 library svgaplayer_flutter_player;
 
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 // ignore: import_of_legacy_library_into_null_safe
 import 'package:svgaplayer_flutter/proto/svga.pb.dart';
 // ignore: import_of_legacy_library_into_null_safe
+import 'audio_player.dart';
 import 'proto/svga.pbserver.dart';
 import 'dart:typed_data';
 import 'package:path_drawing/path_drawing.dart';
@@ -57,6 +59,7 @@ class SVGAImage extends StatefulWidget {
 class SVGAAnimationController extends AnimationController {
   MovieEntity? _videoItem;
   bool _canvasNeedsClear = false;
+  final List<SVGAAudioLayer> _audioLayers = [];
 
   SVGAAnimationController({
     required TickerProvider vsync,
@@ -86,8 +89,16 @@ class SVGAAnimationController extends AnimationController {
       // avoid dividing by 0, use 20 by default
       // see https://github.com/svga/SVGAPlayer-Web/blob/1c5711db068a25006316f9890b11d6666d531c39/src/videoEntity.js#L51
       if (fps == 0) fps = 20;
-      duration =
-          Duration(milliseconds: (movieParams.frames / fps * 1000).toInt());
+      duration = Duration(milliseconds: (movieParams.frames / fps * 1000).toInt());
+      // 在设置新的 videoItem 之前，必须销毁旧的音频层并清空列表
+      for (final audio in _audioLayers) {
+        audio.dispose();
+      }
+      _audioLayers.clear();
+      // 音频层
+      for (var audio in value.audios) {
+        _audioLayers.add(SVGAAudioLayer(audio, value));
+      }
     } else {
       duration = Duration.zero;
     }
@@ -127,9 +138,21 @@ class SVGAAnimationController extends AnimationController {
     return super.forward(from: from);
   }
 
+  @override
+  void stop({bool canceled = true}) {
+    for (final audio in _audioLayers) {
+      // audio.pauseAudio();
+      audio.stopAudio();
+    }
+    super.stop(canceled: canceled);
+  }
+
   bool _isDisposed = false;
   @override
   void dispose() {
+    for (final audio in _audioLayers) {
+      audio.dispose();
+    }
     // auto dispose _videoItem when set null
     videoItem = null;
     _isDisposed = true;
@@ -142,6 +165,7 @@ class _SVGAImageState extends State<SVGAImage> {
   @override
   void initState() {
     super.initState();
+
     video = widget._controller.videoItem;
     widget._controller.addListener(_handleChange);
     widget._controller.addStatusListener(_handleStatusChange);
@@ -160,19 +184,58 @@ class _SVGAImageState extends State<SVGAImage> {
   }
 
   void _handleChange() {
-    if (mounted &&
-        !widget._controller._isDisposed &&
-        video != widget._controller.videoItem) {
-      setState(() {
-        // rebuild
-        video = widget._controller.videoItem;
-      });
+    if (mounted) {
+      if (video == widget._controller.videoItem) {
+        handleAudio();
+      } else if (!widget._controller._isDisposed) {
+        setState(() {
+          // rebuild
+          video = widget._controller.videoItem;
+        });
+      }
     }
+    // if (mounted &&
+    //     !widget._controller._isDisposed &&
+    //     video != widget._controller.videoItem) {
+    //   setState(() {
+    //     // rebuild
+    //     video = widget._controller.videoItem;
+    //   });
+    // }
   }
 
   void _handleStatusChange(AnimationStatus status) {
     if (status == AnimationStatus.completed && widget.clearsAfterStop) {
       widget._controller.clear();
+    }
+  }
+
+  void handleAudio() {
+    final audioLayers = widget._controller._audioLayers;
+    for (final audio in audioLayers) {
+      // if (!audio.isPlaying &&
+      //     audio.audioItem.startFrame == widget._controller.currentFrame) {
+      //   audio.playAudio();
+      // }
+      // debugPrint('currentFrame: ${widget._controller.currentFrame}');
+      // debugPrint('startFrame: ${audio.audioItem.startFrame}');
+      // debugPrint('endFrame: ${audio.audioItem.endFrame }');
+      // debugPrint('endFrame: ${widget._controller.videoItem?.params.frames }');
+      var audioItemEndFrame = audio.audioItem.endFrame;
+      if (audio.audioItem.endFrame == widget._controller.videoItem?.params.frames) {
+        audioItemEndFrame = audioItemEndFrame - 1;
+      }
+      if (!audio.isPlaying &&
+          audio.audioItem.startFrame <= widget._controller.currentFrame &&
+          audioItemEndFrame > widget._controller.currentFrame) {
+        audio.playAudio();
+      }
+      if (audio.isPlaying &&
+          audioItemEndFrame <= widget._controller.currentFrame) {
+        audio.stopAudio();
+        // audio.pauseAudio();
+
+      }
     }
   }
 

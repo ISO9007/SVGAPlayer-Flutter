@@ -6,6 +6,7 @@ import 'package:flutter/painting.dart' show decodeImageFromList;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' show get;
 import 'package:archive/archive.dart' as archive;
+import 'package:svgaplayer_flutter/audio_player.dart';
 // ignore: import_of_legacy_library_into_null_safe
 import 'proto/svga.pbserver.dart';
 
@@ -75,11 +76,18 @@ class SVGAParser {
     if (images.isEmpty) return Future.value(movieItem);
     return Future.wait(images.entries.map((item) async {
       // result null means a decoding error occurred
-      final decodeImage = await _decodeImageItem(
-          item.key, Uint8List.fromList(item.value),
-          timeline: timeline);
-      if (decodeImage != null) {
-        movieItem.bitmapCache[item.key] = decodeImage;
+      final itemBytes = Uint8List.fromList(item.value);
+      if (_isMp3Data(itemBytes)) {
+        debugPrint('资源有MP3数据: ${itemBytes.length}');
+        SVGAAudioInit.initAudioEngine();
+        movieItem.audiosData[item.key] = itemBytes;
+      }else {
+        final decodeImage = await _decodeImageItem(
+            item.key, itemBytes,
+            timeline: timeline);
+        if (decodeImage != null) {
+          movieItem.bitmapCache[item.key] = decodeImage;
+        }
       }
     })).then((_) => movieItem);
   }
@@ -117,5 +125,11 @@ class SVGAParser {
       }());
       return null;
     }
+  }
+
+  bool _isMp3Data(Uint8List data) {
+    const mp3MagicTag = 'ID3';
+    final dataTag = String.fromCharCodes(data.take(mp3MagicTag.length));
+    return dataTag == mp3MagicTag;
   }
 }
