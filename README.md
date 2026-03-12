@@ -1,6 +1,6 @@
 # SVGAPlayer-Flutter
 
-1. 添加支持SVGA音频
+1.在原SVGAPlayer-Flutter支持SVGA音频
 
 [简体中文](./README.zh.md)
 
