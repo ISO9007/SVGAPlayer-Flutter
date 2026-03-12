@@ -145,7 +145,3 @@ Here are many feature samples.
 
 [Anti 996](./LICENSE)
 
-
-## 感谢或联系作者
-
-![](https://cdn.jsdelivr.net/gh/PonyCui/ponycui.github.io@master/contact.png)
